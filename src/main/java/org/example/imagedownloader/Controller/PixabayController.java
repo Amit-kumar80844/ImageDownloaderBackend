@@ -1,70 +1,150 @@
 package org.example.imagedownloader.Controller;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.example.imagedownloader.service.PixabayService;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
 
+import java.io.InputStream;
+import java.net.URL;
 import java.util.Map;
 
-@Service
-public class PixabayService {
+@RestController
+@RequestMapping("/api")
+@CrossOrigin("*") // allow Android app access
+public class PixabayController {
 
-    @Value("${pixabay.api.key}")
-    private String apiKey;
+    private final PixabayService pixabayService;
 
-    private static final String BASE_URL = "https://pixabay.com/api/";
-
-    private final RestTemplate restTemplate;
-
-    public PixabayService(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public PixabayController(PixabayService pixabayService) {
+        this.pixabayService = pixabayService;
     }
 
-    public Map<String, Object> searchImages(
-            String query,
-            String imageType,
-            String order,
-            int perPage,
-            int page,
-            String orientation,
-            String category,
-            Integer minWidth,
-            Integer minHeight,
-            String colors,
-            boolean editorsChoice,
-            boolean safesearch) {
+    @GetMapping("/search")
+    public ResponseEntity<Map<String, Object>> search(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "all") String image_type,
+            @RequestParam(defaultValue = "popular") String order,
+            @RequestParam(defaultValue = "20") int per_page,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(required = false) String orientation,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Integer min_width,
+            @RequestParam(required = false) Integer min_height,
+            @RequestParam(required = false) String colors,
+            @RequestParam(defaultValue = "false") boolean editors_choice,
+            @RequestParam(defaultValue = "false") boolean safesearch) {
 
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(BASE_URL)
-                .queryParam("key", apiKey)
-                .queryParam("q", query)
-                .queryParam("image_type", imageType)
-                .queryParam("order", order)
-                .queryParam("per_page", perPage)
-                .queryParam("page", page)
-                .queryParam("safesearch", safesearch);
+        Map<String, Object> results = pixabayService.searchImages(
+                q, image_type, order, per_page, page,
+                orientation, category, min_width, min_height,
+                colors, editors_choice, safesearch
+        );
+        return ResponseEntity.ok(results);
+    }
 
-        // Add optional parameters
-        if (orientation != null && !orientation.isEmpty()) {
-            builder.queryParam("orientation", orientation);
-        }
-        if (category != null && !category.isEmpty()) {
-            builder.queryParam("category", category);
-        }
-        if (minWidth != null) {
-            builder.queryParam("min_width", minWidth);
-        }
-        if (minHeight != null) {
-            builder.queryParam("min_height", minHeight);
-        }
-        if (colors != null && !colors.isEmpty()) {
-            builder.queryParam("colors", colors);
-        }
-        if (editorsChoice) {
-            builder.queryParam("editors_choice", true);
-        }
+    @GetMapping("/wallpapers")
+    public ResponseEntity<Map<String, Object>> searchWallpapers(
+            @RequestParam(defaultValue = "nature") String q,
+            @RequestParam(defaultValue = "1920") int min_width,
+            @RequestParam(defaultValue = "1080") int min_height,
+            @RequestParam(defaultValue = "horizontal") String orientation,
+            @RequestParam(defaultValue = "popular") String order,
+            @RequestParam(defaultValue = "20") int per_page,
+            @RequestParam(defaultValue = "1") int page) {
 
-        String url = builder.toUriString();
-        return restTemplate.getForObject(url, Map.class);
+        Map<String, Object> results = pixabayService.searchImages(
+                q, "photo", order, per_page, page,
+                orientation, null, min_width, min_height,
+                null, false, true
+        );
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("/high-quality")
+    public ResponseEntity<Map<String, Object>> searchHighQuality(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "2000") int min_width,
+            @RequestParam(defaultValue = "2000") int min_height,
+            @RequestParam(defaultValue = "true") boolean editors_choice,
+            @RequestParam(defaultValue = "latest") String order,
+            @RequestParam(defaultValue = "20") int per_page,
+            @RequestParam(defaultValue = "1") int page) {
+
+        Map<String, Object> results = pixabayService.searchImages(
+                q, "photo", order, per_page, page,
+                null, null, min_width, min_height,
+                null, editors_choice, true
+        );
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("/categories")
+    public ResponseEntity<Map<String, String>> getCategories() {
+        Map<String, String> categories = Map.ofEntries(
+                Map.entry("backgrounds", "Backgrounds"),
+                Map.entry("fashion", "Fashion"),
+                Map.entry("nature", "Nature"),
+                Map.entry("science", "Science"),
+                Map.entry("education", "Education"),
+                Map.entry("feelings", "Feelings"),
+                Map.entry("health", "Health"),
+                Map.entry("people", "People"),
+                Map.entry("religion", "Religion"),
+                Map.entry("places", "Places"),
+                Map.entry("animals", "Animals"),
+                Map.entry("industry", "Industry"),
+                Map.entry("computer", "Computer"),
+                Map.entry("food", "Food"),
+                Map.entry("sports", "Sports"),
+                Map.entry("transportation", "Transportation"),
+                Map.entry("travel", "Travel"),
+                Map.entry("buildings", "Buildings"),
+                Map.entry("business", "Business"),
+                Map.entry("music", "Music")
+        );
+        return ResponseEntity.ok(categories);
+    }
+
+    @GetMapping("/colors")
+    public ResponseEntity<Map<String, String>> getColors() {
+        Map<String, String> colors = Map.ofEntries(
+                Map.entry("grayscale", "Grayscale"),
+                Map.entry("transparent", "Transparent"),
+                Map.entry("red", "Red"),
+                Map.entry("orange", "Orange"),
+                Map.entry("yellow", "Yellow"),
+                Map.entry("green", "Green"),
+                Map.entry("turquoise", "Turquoise"),
+                Map.entry("blue", "Blue"),
+                Map.entry("lilac", "Lilac"),
+                Map.entry("pink", "Pink"),
+                Map.entry("white", "White"),
+                Map.entry("gray", "Gray"),
+                Map.entry("black", "Black"),
+                Map.entry("brown", "Brown")
+        );
+        return ResponseEntity.ok(colors);
+    }
+
+    @GetMapping("/download")
+    public ResponseEntity<InputStreamResource> downloadImage(@RequestParam String imageUrl) {
+        try {
+            URL url = new URL(imageUrl);
+            InputStream inputStream = url.openStream();
+
+            String filename = "pixabay_image_" + System.currentTimeMillis() + ".jpg";
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .contentType(MediaType.IMAGE_JPEG)
+                    .body(new InputStreamResource(inputStream));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }
