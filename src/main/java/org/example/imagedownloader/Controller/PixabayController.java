@@ -21,8 +21,8 @@ public class PixabayController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<Map<String, Object>> search(
-            @RequestParam String q,
+    public ResponseEntity<Map<String, Object>> searchImages(
+            @RequestParam(defaultValue = "nature") String q,
             @RequestParam(defaultValue = "all") String image_type,
             @RequestParam(defaultValue = "popular") String order,
             @RequestParam(defaultValue = "20") int per_page,
@@ -33,49 +33,39 @@ public class PixabayController {
             @RequestParam(required = false) Integer min_height,
             @RequestParam(required = false) String colors,
             @RequestParam(defaultValue = "false") boolean editors_choice,
-            @RequestParam(defaultValue = "false") boolean safesearch) {
+            @RequestParam(defaultValue = "false") boolean safesearch,
+            @RequestParam(defaultValue = "normal") String mode // NEW param: normal | wallpapers | high-quality
+    ) {
+        switch (mode.toLowerCase()) {
+            case "wallpapers":
+                image_type = "photo";
+                orientation = (orientation != null) ? orientation : "horizontal";
+                min_width = (min_width != null) ? min_width : 1920;
+                min_height = (min_height != null) ? min_height : 1080;
+                safesearch = true;
+                editors_choice = false;
+                order = (order != null) ? order : "popular";
+                break;
+
+            case "high-quality":
+                image_type = "photo";
+                min_width = (min_width != null) ? min_width : 2000;
+                min_height = (min_height != null) ? min_height : 2000;
+                editors_choice = true;
+                safesearch = true;
+                order = (order != null) ? order : "latest";
+                break;
+
+            default:
+                break;
+        }
 
         Map<String, Object> results = pixabayService.searchImages(
                 q, image_type, order, per_page, page,
                 orientation, category, min_width, min_height,
                 colors, editors_choice, safesearch
         );
-        return ResponseEntity.ok(results);
-    }
 
-    @GetMapping("/wallpapers")
-    public ResponseEntity<Map<String, Object>> searchWallpapers(
-            @RequestParam(defaultValue = "nature") String q,
-            @RequestParam(defaultValue = "1920") int min_width,
-            @RequestParam(defaultValue = "1080") int min_height,
-            @RequestParam(defaultValue = "horizontal") String orientation,
-            @RequestParam(defaultValue = "popular") String order,
-            @RequestParam(defaultValue = "20") int per_page,
-            @RequestParam(defaultValue = "1") int page) {
-
-        Map<String, Object> results = pixabayService.searchImages(
-                q, "photo", order, per_page, page,
-                orientation, null, min_width, min_height,
-                null, false, true
-        );
-        return ResponseEntity.ok(results);
-    }
-
-    @GetMapping("/high-quality")
-    public ResponseEntity<Map<String, Object>> searchHighQuality(
-            @RequestParam String q,
-            @RequestParam(defaultValue = "2000") int min_width,
-            @RequestParam(defaultValue = "2000") int min_height,
-            @RequestParam(defaultValue = "true") boolean editors_choice,
-            @RequestParam(defaultValue = "latest") String order,
-            @RequestParam(defaultValue = "20") int per_page,
-            @RequestParam(defaultValue = "1") int page) {
-
-        Map<String, Object> results = pixabayService.searchImages(
-                q, "photo", order, per_page, page,
-                null, null, min_width, min_height,
-                null, editors_choice, true
-        );
         return ResponseEntity.ok(results);
     }
 
@@ -141,7 +131,6 @@ public class PixabayController {
                     .headers(headers)
                     .contentType(MediaType.IMAGE_JPEG)
                     .body(new InputStreamResource(inputStream));
-
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

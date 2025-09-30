@@ -1,6 +1,7 @@
 package org.example.imagedownloader.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
@@ -18,13 +19,13 @@ public class PixabayService {
     private String apiKey;
 
     private static final String BASE_URL = "https://pixabay.com/api/";
-
     private final RestTemplate restTemplate;
 
     public PixabayService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
+    @Cacheable(value = "pixabayCache", key = "#query + '_' + #page + '_' + #imageType + '_' + #order")
     public Map<String, Object> searchImages(
             String query,
             String imageType,
@@ -39,7 +40,6 @@ public class PixabayService {
             boolean editorsChoice,
             boolean safesearch) {
 
-        // Validate perPage parameter (Pixabay API accepts values between 3 and 200)
         if (perPage < 3) {
             perPage = 3;
         } else if (perPage > 200) {
@@ -59,7 +59,6 @@ public class PixabayService {
                 .queryParam("page", page)
                 .queryParam("safesearch", safesearch);
 
-        // Add optional parameters
         if (orientation != null && !orientation.isEmpty()) {
             builder.queryParam("orientation", orientation);
         }
@@ -80,6 +79,7 @@ public class PixabayService {
         }
 
         String url = builder.toUriString();
+
         try {
             return restTemplate.getForObject(url, Map.class);
         } catch (HttpClientErrorException e) {
@@ -95,3 +95,4 @@ public class PixabayService {
         }
     }
 }
+
