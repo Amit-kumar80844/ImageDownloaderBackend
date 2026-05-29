@@ -76,6 +76,12 @@
             <artifactId>commons-pool2</artifactId>
         </dependency>
 
+        <!-- Redis Cache Starter -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
